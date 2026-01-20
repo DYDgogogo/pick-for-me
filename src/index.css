@@ -30,6 +30,13 @@
   box-sizing: border-box;
 }
 
+/* Remove default list styles globally */
+ul, ol, li {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
 html, body, #root {
   height: 100%;
   width: 100%;

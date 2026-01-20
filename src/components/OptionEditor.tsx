@@ -429,6 +429,9 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
           maxWidth: '100%',
           alignItems: 'stretch', // 确保卡片宽度一致
           position: 'relative',
+          listStyle: 'none', // 移除列表默认样式（黑点）
+          padding: 0, // 移除默认 padding
+          margin: 0, // 移除默认 margin
         }}
         layoutRoot
         as="div"
@@ -445,6 +448,9 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
             initial={false}
             style={{
               position: 'relative',
+              listStyle: 'none', // 移除列表默认样式（黑点）
+              padding: 0, // 移除默认 padding
+              margin: 0, // 移除默认 margin
             }}
             whileDrag={{ 
               scale: 1.01,
@@ -1122,7 +1128,12 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                   values={options}
                   onReorder={handleReorder}
                   className="flex flex-col"
-                  style={{ gap: '0px' }} // 使用 marginBottom 控制间距
+                  style={{ 
+                    gap: '0px', // 使用 marginBottom 控制间距
+                    listStyle: 'none', // 移除列表默认样式（黑点）
+                    padding: 0, // 移除默认 padding
+                    margin: 0, // 移除默认 margin
+                  }}
                   layoutRoot
                   as="div"
                 >
@@ -1136,6 +1147,9 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       initial={false}
                       style={{
                         position: 'relative',
+                        listStyle: 'none', // 移除列表默认样式（黑点）
+                        padding: 0, // 移除默认 padding
+                        margin: 0, // 移除默认 margin
                       }}
                       whileDrag={{ 
                         scale: 1.01,
