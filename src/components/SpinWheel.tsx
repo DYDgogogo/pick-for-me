@@ -415,16 +415,26 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
   // Real-time wheel rotation sync when options are reordered
   useEffect(() => {
     // Defensive check: prevent calculation with insufficient options
-    if (options.length < 2) return;
+    if (options.length < 2) {
+      prevOptionsRef.current = options;
+      return;
+    }
+    
+    // If options haven't changed, do nothing
+    if (JSON.stringify(options) === JSON.stringify(prevOptionsRef.current)) {
+      return;
+    }
+    
+    // If spinning, don't sync (wait until spin completes)
+    if (isSpinning) {
+      prevOptionsRef.current = options;
+      return;
+    }
     
     // Check if options were reordered (same length, different order)
     // IMPORTANT: Only sync rotation if it's a true reorder (same items, different order)
     // NOT when options are completely replaced (like switching presets)
-    if (
-      options.length === prevOptionsRef.current.length &&
-      JSON.stringify(options) !== JSON.stringify(prevOptionsRef.current) &&
-      !isSpinning
-    ) {
+    if (options.length === prevOptionsRef.current.length) {
       // STRICT CHECK: Verify this is actually a reorder
       // Both arrays must have the exact same items (same count of each item)
       // This prevents false positives when switching between presets with same length
@@ -435,10 +445,10 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
       
       // Only proceed if it's a true reorder, not a complete replacement
       if (isReorder) {
-        // Additional safety: only sync if options changed recently (within 300ms)
+        // Additional safety: only sync if options changed recently (within 200ms)
         // This prevents stale state from causing incorrect rotations
         const timeSinceChange = Date.now() - optionsChangeTimestampRef.current;
-        if (timeSinceChange > 300) {
+        if (timeSinceChange > 200) {
           // Options changed too long ago, might be stale, skip sync
           prevOptionsRef.current = options;
           prevRotationRef.current = rotation;
@@ -479,15 +489,23 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
               ease: [0.1, 0.7, 0.1, 1] as const // 统一使用新的 easing 曲线
             },
           });
+          
+          // Update prevOptionsRef after rotation adjustment
+          prevOptionsRef.current = options;
+          return;
         }
       }
       // If it's a complete replacement (not a reorder), don't adjust rotation
       // The wheel will naturally reset to show the first option
+      // IMPORTANT: Update prevOptionsRef immediately to prevent false reorder detection
+      prevOptionsRef.current = options;
+      prevRotationRef.current = rotation;
+    } else {
+      // Different length = complete replacement, update immediately
+      prevOptionsRef.current = options;
+      prevRotationRef.current = rotation;
     }
-    
-    prevOptionsRef.current = options;
-    prevRotationRef.current = rotation;
-  }, [options, isSpinning, controls, rotation]);
+  }, [options, isSpinning, controls, rotation, calculateIndexFromRotation]);
 
   // Handle external highlight requests from history (clicking a history pill)
   useEffect(() => {
