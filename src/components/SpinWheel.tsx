@@ -405,38 +405,49 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
     if (options.length < 2) return;
     
     // Check if options were reordered (same length, different order)
+    // IMPORTANT: Only sync rotation if it's a true reorder (same items, different order)
+    // NOT when options are completely replaced (like switching presets)
     if (
       options.length === prevOptionsRef.current.length &&
       JSON.stringify(options) !== JSON.stringify(prevOptionsRef.current) &&
       !isSpinning
     ) {
-      // Calculate which option is currently under the pointer
-      const currentIndex = calculateIndexFromRotation(rotation);
-      const currentOption = prevOptionsRef.current[currentIndex];
+      // Verify this is actually a reorder (all items from prev exist in new)
+      const isReorder = prevOptionsRef.current.every(opt => options.includes(opt)) &&
+                        options.every(opt => prevOptionsRef.current.includes(opt));
       
-      // Find this option's new index in the reordered list
-      const newIndex = options.indexOf(currentOption);
-      
-      if (newIndex !== -1 && newIndex !== currentIndex) {
-        // Calculate rotation adjustment to keep the same option under the pointer
-        const sliceAngle = 360 / options.length;
-        const indexDiff = newIndex - currentIndex;
-        const rotationAdjustment = -indexDiff * sliceAngle; // Negative because we rotate opposite to index change
+      // Only proceed if it's a true reorder, not a complete replacement
+      if (isReorder) {
+        // Calculate which option is currently under the pointer
+        const currentIndex = calculateIndexFromRotation(rotation);
+        const currentOption = prevOptionsRef.current[currentIndex];
         
-        // Update rotation smoothly
-        const newRotation = rotation + rotationAdjustment;
-        setRotation(newRotation);
-        prevRotationRef.current = newRotation;
+        // Find this option's new index in the reordered list
+        const newIndex = options.indexOf(currentOption);
         
-        // Animate the wheel to the new rotation with Apple-level easing
-        controls.start({
-          rotate: newRotation,
-          transition: { 
-            duration: 0.4, 
-            ease: [0.1, 0.7, 0.1, 1] as const // 统一使用新的 easing 曲线
-          },
-        });
+        if (newIndex !== -1 && newIndex !== currentIndex) {
+          // Calculate rotation adjustment to keep the same option under the pointer
+          const sliceAngle = 360 / options.length;
+          const indexDiff = newIndex - currentIndex;
+          const rotationAdjustment = -indexDiff * sliceAngle; // Negative because we rotate opposite to index change
+          
+          // Update rotation smoothly
+          const newRotation = rotation + rotationAdjustment;
+          setRotation(newRotation);
+          prevRotationRef.current = newRotation;
+          
+          // Animate the wheel to the new rotation with Apple-level easing
+          controls.start({
+            rotate: newRotation,
+            transition: { 
+              duration: 0.4, 
+              ease: [0.1, 0.7, 0.1, 1] as const // 统一使用新的 easing 曲线
+            },
+          });
+        }
       }
+      // If it's a complete replacement (not a reorder), don't adjust rotation
+      // The wheel will naturally reset to show the first option
     }
     
     prevOptionsRef.current = options;

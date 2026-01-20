@@ -336,8 +336,16 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
       const targetPreset = presets[magnetIndex];
       if (!targetPreset) return;
 
-      triggerHaptic();
-      applyPreset(targetPreset.options);
+      // 防止在选项正在变化时触发（避免冲突）
+      // 检查目标模板是否与当前选项完全不同（完全替换）
+      const isCompleteReplacement = targetPreset.options.length !== options.length ||
+        !targetPreset.options.every(opt => options.includes(opt));
+      
+      // 只有在明确是用户滚动选择时才触发
+      if (isCompleteReplacement || activeIndex === -1) {
+        triggerHaptic();
+        applyPreset(targetPreset.options);
+      }
     }, 200);
   }, [applyPreset, isExpanded, magnetIndex, options, presets, triggerHaptic]);
 
@@ -917,7 +925,13 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       return (
                         <motion.button
                           key={index}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Clear any pending scroll selection to avoid conflicts
+                            if (scrollEndTimeoutRef.current !== null) {
+                              window.clearTimeout(scrollEndTimeoutRef.current);
+                              scrollEndTimeoutRef.current = null;
+                            }
                             centerPresetChip(index);
                             triggerHaptic();
                             applyPreset(preset.options);
