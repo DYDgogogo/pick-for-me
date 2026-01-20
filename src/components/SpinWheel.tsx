@@ -388,6 +388,7 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
   const prevOptionsRef = useRef<string[]>(options);
   const prevRotationRef = useRef<number>(rotation);
   const lastHistoryRequestIdRef = useRef<number | null>(null);
+  const optionsChangeTimestampRef = useRef<number>(0); // Track when options changed
 
   useEffect(() => {
     setSelectedIndex(null);
@@ -396,6 +397,10 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
     const timer = setTimeout(() => {
       setOpacity(1);
     }, 300);
+    
+    // Mark the timestamp when options change
+    optionsChangeTimestampRef.current = Date.now();
+    
     return () => clearTimeout(timer);
   }, [options.length]);
 
@@ -418,8 +423,26 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
       
       // Only proceed if it's a true reorder, not a complete replacement
       if (isReorder) {
+        // Additional safety: only sync if options changed recently (within 500ms)
+        // This prevents stale state from causing incorrect rotations
+        const timeSinceChange = Date.now() - optionsChangeTimestampRef.current;
+        if (timeSinceChange > 500) {
+          // Options changed too long ago, might be stale, skip sync
+          prevOptionsRef.current = options;
+          prevRotationRef.current = rotation;
+          return;
+        }
+        
         // Calculate which option is currently under the pointer
         const currentIndex = calculateIndexFromRotation(rotation);
+        
+        // Safety check: ensure currentIndex is valid
+        if (currentIndex < 0 || currentIndex >= prevOptionsRef.current.length) {
+          prevOptionsRef.current = options;
+          prevRotationRef.current = rotation;
+          return;
+        }
+        
         const currentOption = prevOptionsRef.current[currentIndex];
         
         // Find this option's new index in the reordered list

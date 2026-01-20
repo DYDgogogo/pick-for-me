@@ -3,14 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SpinWheel from './components/SpinWheel';
 import OptionEditor from './components/OptionEditor';
 
-// Presets - 快捷模板系统
+// Presets - 快捷模板系统（基于中国用户高频使用场景）
 const PRESETS = [
+  // 高频决策场景（Top 3）
   { name: '吃什么', options: ['火锅', '烧烤', '日料', '外卖', '自己做'] },
   { name: '去哪玩', options: ['电影院', '健身房', '公园', '居家', '逛街'] },
-  { name: '谁买单', options: ['我', '你', 'A/B 组', '剪刀石头布'] },
+  { name: '谁买单', options: ['我', '你', 'AA制', '下次我请'] },
+  
+  // 通用决策场景
   { name: '是或否', options: ['是', '否'] },
   { name: '选A还是B', options: ['选A', '选B'] },
   { name: '石头剪刀布', options: ['石头', '剪刀', '布'] },
+  
+  // 生活场景
+  { name: '今天穿什么', options: ['休闲', '正式', '运动', '随意'] },
+  { name: '喝什么', options: ['咖啡', '奶茶', '果汁', '水'] },
+  { name: '看什么', options: ['电影', '电视剧', '综艺', '短视频'] },
 ];
 
 // 微信小程序 API 类型声明

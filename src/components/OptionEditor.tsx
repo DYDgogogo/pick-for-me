@@ -32,6 +32,8 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
   const rafIdRef = useRef<number | null>(null);
   const scrollEndTimeoutRef = useRef<number | null>(null);
   const [magnetIndex, setMagnetIndex] = useState<number | null>(null);
+  const isApplyingPresetRef = useRef(false); // Prevent concurrent preset applications
+  const lastAppliedPresetRef = useRef<string>(''); // Track last applied preset to prevent loops
   
   // Responsive viewport detection for small screens
   const [viewportWidth, setViewportWidth] = useState<number>(
@@ -195,10 +197,38 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
     }, 2000);
   };
 
-  const applyPreset = (presetOptions: string[]) => {
+  const applyPreset = useCallback((presetOptions: string[]) => {
+    // Prevent concurrent applications
+    if (isApplyingPresetRef.current) {
+      return;
+    }
+    
+    // Create a unique key for this preset
+    const presetKey = JSON.stringify(presetOptions);
+    
+    // Prevent applying the same preset twice in quick succession (avoid loops)
+    if (lastAppliedPresetRef.current === presetKey) {
+      return;
+    }
+    
+    isApplyingPresetRef.current = true;
+    lastAppliedPresetRef.current = presetKey;
+    
+    // Clear any pending scroll selection to avoid conflicts
+    if (scrollEndTimeoutRef.current !== null) {
+      window.clearTimeout(scrollEndTimeoutRef.current);
+      scrollEndTimeoutRef.current = null;
+    }
+    
+    // Apply the preset
     onChange(presetOptions);
     showToastMessage('已应用模板');
-  };
+    
+    // Reset flag after a short delay
+    setTimeout(() => {
+      isApplyingPresetRef.current = false;
+    }, 300);
+  }, [onChange]);
 
   const triggerHaptic = useCallback(() => {
     if (typeof wx !== 'undefined' && wx?.vibrateShort) {
@@ -369,6 +399,9 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
       scrollEndTimeoutRef.current = null;
       if (!isExpanded) return;
       if (magnetIndex === null) return;
+      
+      // Don't trigger if a preset is currently being applied
+      if (isApplyingPresetRef.current) return;
 
       const activeIndex = presets.findIndex(
         (preset) =>
@@ -387,12 +420,13 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
       const isCompleteReplacement = targetPreset.options.length !== options.length ||
         !targetPreset.options.every(opt => options.includes(opt));
       
-      // 只有在明确是用户滚动选择时才触发
-      if (isCompleteReplacement || activeIndex === -1) {
+      // 只有在明确是用户滚动选择时才触发（且不是点击触发的）
+      // 增加延迟，确保点击事件优先处理
+      if ((isCompleteReplacement || activeIndex === -1) && !isApplyingPresetRef.current) {
         triggerHaptic();
         applyPreset(targetPreset.options);
       }
-    }, 200);
+    }, 300); // 增加延迟，确保点击事件优先
   }, [applyPreset, isExpanded, magnetIndex, options, presets, triggerHaptic]);
 
   useEffect(() => {
@@ -974,11 +1008,17 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                           key={index}
                           onClick={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
+                            
                             // Clear any pending scroll selection to avoid conflicts
                             if (scrollEndTimeoutRef.current !== null) {
                               window.clearTimeout(scrollEndTimeoutRef.current);
                               scrollEndTimeoutRef.current = null;
                             }
+                            
+                            // Prevent if already applying
+                            if (isApplyingPresetRef.current) return;
+                            
                             centerPresetChip(index);
                             triggerHaptic();
                             applyPreset(preset.options);
