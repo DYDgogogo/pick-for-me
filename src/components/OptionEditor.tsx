@@ -921,7 +921,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                 style={{ marginTop: '8px' }} // tighter gap -> unified island
               >
                 {/* Scroll area with edge gradient fades (no arrows) */}
-                <div style={{ position: 'relative', width: '100%' }}>
+                <div style={{ position: 'relative', width: '100%', overflow: 'hidden' }}>
                   <div
                     className="flex overflow-x-auto hide-scrollbar"
                     ref={presetsScrollRef}
@@ -929,9 +929,17 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       scheduleMagnetUpdate();
                       scheduleScrollEndSelection();
                     }}
+                    onMouseDown={(e) => {
+                      // Allow scrolling but don't interfere with button clicks
+                      // Only prevent if clicking directly on scroll container (not on buttons)
+                      if (e.target === e.currentTarget || (e.target as HTMLElement).closest('button') === null) {
+                        // This is a scroll action, allow it
+                        return;
+                      }
+                    }}
                     style={{
                       width: '100%',
-                      justifyContent: 'center', // Center when chips don't overflow
+                      justifyContent: 'flex-start', // Changed from 'center' to 'flex-start' to ensure proper spacing
                       gap: '10px',
                       scrollSnapType: 'x mandatory', // CSS magnetic snap
                       WebkitOverflowScrolling: 'touch', // Momentum scrolling (iOS)
@@ -939,7 +947,8 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       paddingTop: '4px',
                       paddingBottom: '4px',
                       paddingLeft: '10px',
-                      paddingRight: '20px', // Extra padding for last item to ensure it's fully clickable
+                      paddingRight: '50px', // Extra padding for last item to ensure it's fully clickable (increased from 20px)
+                      position: 'relative', // Ensure proper stacking context
                     }}
                   >
                     {presets.map((preset, index) => {
@@ -972,9 +981,15 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                           onMouseDown={(e) => {
                             // Prevent scroll from interfering with click on edge items
                             e.stopPropagation();
+                            e.preventDefault(); // Also prevent default to ensure click works
                           }}
                           onTouchStart={(e) => {
                             // Prevent scroll from interfering with touch on edge items
+                            e.stopPropagation();
+                            // Don't preventDefault on touchStart to allow proper touch handling
+                          }}
+                          onTouchEnd={(e) => {
+                            // Ensure touch events work properly for last item
                             e.stopPropagation();
                           }}
                           ref={(el) => {
@@ -986,6 +1001,8 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                           className="flex-shrink-0 flex items-center gap-2"
                           style={{
                             touchAction: 'manipulation', // Prevent double-tap zoom and improve touch response
+                            position: 'relative', // Ensure button is positioned
+                            zIndex: 10, // Ensure button is above other elements
                             // Chip Refinement (Light glass): default subtle, emphasized (selected/center) pops
                             paddingLeft: isVerySmallScreen ? '12px' : isSmallScreen ? '14px' : '16px',
                             paddingRight: isVerySmallScreen ? '12px' : isSmallScreen ? '14px' : '16px',
@@ -1019,6 +1036,8 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                         </motion.button>
                       );
                     })}
+                    {/* Extra spacer to ensure last button is fully accessible */}
+                    <div style={{ minWidth: '30px', flexShrink: 0 }} />
                   </div>
 
                   {/* Left fade (30px) */}
@@ -1035,7 +1054,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                         'linear-gradient(to right, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0))',
                     }}
                   />
-                  {/* Right fade (30px) */}
+                  {/* Right fade (reduced width to avoid blocking last button) */}
                   <div
                     aria-hidden="true"
                     style={{
@@ -1043,10 +1062,11 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       top: 0,
                       bottom: 0,
                       right: 0,
-                      width: '30px',
+                      width: '20px', // Reduced from 30px to avoid blocking last button
                       pointerEvents: 'none',
                       background:
-                        'linear-gradient(to left, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0))',
+                        'linear-gradient(to left, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0))', // Lighter gradient
+                      zIndex: 1, // Lower than buttons
                     }}
                   />
                 </div>
