@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // 微信小程序 API 类型声明
 declare const wx: {
@@ -482,19 +482,6 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
     }
   };
 
-  // Handle drag reorder - optimized for natural feel
-  const handleReorder = (newOptions: string[]) => {
-    try {
-      // Delay state update to allow natural drag animation to complete
-      // Longer delay ensures the item "settles" into position naturally
-      setTimeout(() => {
-        onChange(newOptions);
-      }, 250);
-    } catch (error) {
-      console.error('Error in handleReorder:', error);
-      // Prevent crash by not updating state on error
-    }
-  };
 
   return (
     <div 
@@ -505,11 +492,8 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
         alignItems: 'center', // 确保内容居中对齐
       }}
     >
-      {/* Options - WeChat Style: Show first 3, rest in drawer */}
-      <Reorder.Group
-        axis="y"
-        values={options}
-        onReorder={handleReorder}
+      {/* Options - Simple List (No Drag) */}
+      <div
         className="flex flex-col"
         style={{ 
           gap: '0px', // 使用 marginBottom 控制间距
@@ -521,45 +505,18 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
           padding: 0, // 移除默认 padding
           margin: 0, // 移除默认 margin
         }}
-        layoutRoot
-        as="div"
       >
         {visibleOptions.map((option, visibleIndex) => {
           const actualIndex = visibleIndex; // For first 3 options, index matches
           return (
-          <Reorder.Item
+          <div
             key={`${actualIndex}-${option}`}
-            value={option}
-            dragListener={editingIndex !== actualIndex}
             className="relative group"
-            layout="position"
-            initial={false}
             style={{
               position: 'relative',
               listStyle: 'none', // 移除列表默认样式（黑点）
               padding: 0, // 移除默认 padding
               margin: 0, // 移除默认 margin
-            }}
-            whileDrag={{ 
-              scale: 1.01,
-              zIndex: 1000,
-              cursor: 'grabbing',
-            }}
-            drag="y"
-            dragElastic={0.15}
-            dragMomentum={true}
-            transition={{
-              layout: {
-                type: "spring",
-                stiffness: 280,
-                damping: 25,
-                mass: 0.8,
-              },
-            }}
-            dragTransition={{
-              bounceStiffness: 400,
-              bounceDamping: 25,
-              power: 0.1,
             }}
             onMouseEnter={() => setHoveredIndex(actualIndex)}
             onMouseLeave={() => setHoveredIndex(null)}
@@ -607,17 +564,6 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)', // 极轻微的弥散投影
                   marginBottom: '10px', // 呼吸感间距
                   position: 'relative',
-                  willChange: 'transform',
-                  userSelect: 'none', // 防止拖拽时选中文字
-                }}
-                whileDrag={{
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
-                }}
-                transition={{
-                  boxShadow: {
-                    duration: 0.2,
-                    ease: 'easeOut',
-                  },
                 }}
                 onClick={() => startEdit(actualIndex)}
               >
@@ -669,7 +615,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                 </div>
               </motion.div>
             )}
-          </Reorder.Item>
+          </div>
           );
         })}
 
@@ -747,7 +693,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
             )}
           </motion.div>
         )}
-      </Reorder.Group>
+      </div>
 
       {/* Floating Dark Glass Control Bar - Apple-Level Unified Control Island */}
       <motion.div
@@ -993,7 +939,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       paddingTop: '4px',
                       paddingBottom: '4px',
                       paddingLeft: '10px',
-                      paddingRight: '10px',
+                      paddingRight: '20px', // Extra padding for last item to ensure it's fully clickable
                     }}
                   >
                     {presets.map((preset, index) => {
@@ -1023,6 +969,14 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                             triggerHaptic();
                             applyPreset(preset.options);
                           }}
+                          onMouseDown={(e) => {
+                            // Prevent scroll from interfering with click on edge items
+                            e.stopPropagation();
+                          }}
+                          onTouchStart={(e) => {
+                            // Prevent scroll from interfering with touch on edge items
+                            e.stopPropagation();
+                          }}
                           ref={(el) => {
                             presetButtonRefs.current[index] = el;
                           }}
@@ -1031,6 +985,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                           whileTap={{ scale: 0.95 }}
                           className="flex-shrink-0 flex items-center gap-2"
                           style={{
+                            touchAction: 'manipulation', // Prevent double-tap zoom and improve touch response
                             // Chip Refinement (Light glass): default subtle, emphasized (selected/center) pops
                             paddingLeft: isVerySmallScreen ? '12px' : isSmallScreen ? '14px' : '16px',
                             paddingRight: isVerySmallScreen ? '12px' : isSmallScreen ? '14px' : '16px',
@@ -1224,10 +1179,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                   paddingBottom: '24px',
                 }}
               >
-                <Reorder.Group
-                  axis="y"
-                  values={options}
-                  onReorder={handleReorder}
+                <div
                   className="flex flex-col"
                   style={{ 
                     gap: '0px', // 使用 marginBottom 控制间距
@@ -1235,43 +1187,16 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                     padding: 0, // 移除默认 padding
                     margin: 0, // 移除默认 margin
                   }}
-                  layoutRoot
-                  as="div"
                 >
                   {options.map((option, index) => (
-                    <Reorder.Item
+                    <div
                       key={`${index}-${option}`}
-                      value={option}
-                      dragListener={editingIndex !== index}
                       className="relative group"
-                      layout="position"
-                      initial={false}
                       style={{
                         position: 'relative',
                         listStyle: 'none', // 移除列表默认样式（黑点）
                         padding: 0, // 移除默认 padding
                         margin: 0, // 移除默认 margin
-                      }}
-                      whileDrag={{ 
-                        scale: 1.01,
-                        zIndex: 1000,
-                        cursor: 'grabbing',
-                      }}
-                      drag="y"
-                      dragElastic={0.15}
-                      dragMomentum={true}
-                      transition={{
-                        layout: {
-                          type: "spring",
-                          stiffness: 280,
-                          damping: 25,
-                          mass: 0.8,
-                        },
-                      }}
-                      dragTransition={{
-                        bounceStiffness: 400,
-                        bounceDamping: 25,
-                        power: 0.1,
                       }}
                       onMouseEnter={() => setHoveredIndex(index)}
                       onMouseLeave={() => setHoveredIndex(null)}
@@ -1320,17 +1245,6 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
                             marginBottom: '10px',
                             position: 'relative',
-                            willChange: 'transform',
-                            userSelect: 'none', // 防止拖拽时选中文字
-                          }}
-                          whileDrag={{
-                            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
-                          }}
-                          transition={{
-                            boxShadow: {
-                              duration: 0.2,
-                              ease: 'easeOut',
-                            },
                           }}
                           onClick={() => startEdit(index)}
                         >
@@ -1374,9 +1288,9 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                         </div>
                       </motion.div>
                     )}
-                    </Reorder.Item>
+                    </div>
                   ))}
-                </Reorder.Group>
+                </div>
               </div>
             </motion.div>
           </>
