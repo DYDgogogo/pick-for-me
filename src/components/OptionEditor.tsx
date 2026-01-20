@@ -26,6 +26,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
   const newInputRef = useRef<HTMLInputElement>(null);
+  const isProcessingAddRef = useRef(false); // Prevent duplicate add calls
   const presetsScrollRef = useRef<HTMLDivElement | null>(null);
   const presetButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const rafIdRef = useRef<number | null>(null);
@@ -54,19 +55,51 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
   const hasMoreOptions = options.length > 3;
 
   const addOption = () => {
+    // Prevent duplicate calls (e.g., from both onBlur and onKeyDown)
+    if (isProcessingAddRef.current) {
+      return;
+    }
+    
     try {
-      if (newOption.trim() && options.length < 12) {
-        const trimmedOption = newOption.trim();
-        // Prevent duplicate options
-        if (options.includes(trimmedOption)) {
-          return;
-        }
-        onChange([...options, trimmedOption]);
-        setNewOption('');
+      isProcessingAddRef.current = true;
+      const trimmedOption = newOption.trim();
+      
+      // Check if input is empty
+      if (!trimmedOption) {
         setIsAddingNew(false);
+        setNewOption('');
+        isProcessingAddRef.current = false;
+        return;
       }
+      
+      // Check if reached max options
+      if (options.length >= 12) {
+        showToastMessage('最多只能添加 12 个选项');
+        setIsAddingNew(false);
+        setNewOption('');
+        isProcessingAddRef.current = false;
+        return;
+      }
+      
+      // Prevent duplicate options
+      if (options.includes(trimmedOption)) {
+        showToastMessage('选项已存在');
+        setIsAddingNew(false);
+        setNewOption('');
+        isProcessingAddRef.current = false;
+        return;
+      }
+      
+      // Successfully add option
+      onChange([...options, trimmedOption]);
+      setNewOption('');
+      setIsAddingNew(false);
+      isProcessingAddRef.current = false;
     } catch (error) {
       console.error('Error in addOption:', error);
+      setIsAddingNew(false);
+      setNewOption('');
+      isProcessingAddRef.current = false;
     }
   };
 
@@ -118,6 +151,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
 
   const handleNewKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      e.preventDefault(); // Prevent form submission or other default behavior
       addOption();
     } else if (e.key === 'Escape') {
       setIsAddingNew(false);
@@ -131,7 +165,19 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
   };
 
   const cancelAddNew = () => {
-    if (!newOption.trim()) {
+    // On blur, if there's text, try to add it automatically (mobile-friendly)
+    // This handles the case where user types but doesn't press Enter
+    if (newOption.trim()) {
+      // Use setTimeout to avoid conflicts with onKeyDown (Enter key)
+      // This ensures onKeyDown has priority if user presses Enter
+      setTimeout(() => {
+        // Double-check we're still in adding mode (might have been closed by onKeyDown)
+        if (isAddingNew && !isProcessingAddRef.current) {
+          addOption();
+        }
+      }, 200);
+    } else {
+      // If empty, just close the input
       setIsAddingNew(false);
       setNewOption('');
     }
@@ -651,6 +697,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                   paddingLeft: '20px',
                   textAlign: 'left',
                 }}
+                autoFocus
               />
             ) : (
               <span 
