@@ -390,19 +390,27 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
   const lastHistoryRequestIdRef = useRef<number | null>(null);
   const optionsChangeTimestampRef = useRef<number>(0); // Track when options changed
 
+  // Track when options actually change (not just length)
+  const optionsKeyRef = useRef<string>('');
+  
   useEffect(() => {
-    setSelectedIndex(null);
-    // Add subtle opacity transition when options change
-    setOpacity(0.6);
-    const timer = setTimeout(() => {
-      setOpacity(1);
-    }, 300);
+    const currentKey = JSON.stringify(options);
     
-    // Mark the timestamp when options change
-    optionsChangeTimestampRef.current = Date.now();
-    
-    return () => clearTimeout(timer);
-  }, [options.length]);
+    // Only update if options actually changed (not just a re-render)
+    if (currentKey !== optionsKeyRef.current) {
+      optionsKeyRef.current = currentKey;
+      optionsChangeTimestampRef.current = Date.now();
+      
+      setSelectedIndex(null);
+      // Add subtle opacity transition when options change
+      setOpacity(0.6);
+      const timer = setTimeout(() => {
+        setOpacity(1);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [options]);
 
   // Real-time wheel rotation sync when options are reordered
   useEffect(() => {
@@ -417,16 +425,20 @@ export default function SpinWheel({ options, onResult, onSpinStart, historyHighl
       JSON.stringify(options) !== JSON.stringify(prevOptionsRef.current) &&
       !isSpinning
     ) {
-      // Verify this is actually a reorder (all items from prev exist in new)
-      const isReorder = prevOptionsRef.current.every(opt => options.includes(opt)) &&
-                        options.every(opt => prevOptionsRef.current.includes(opt));
+      // STRICT CHECK: Verify this is actually a reorder
+      // Both arrays must have the exact same items (same count of each item)
+      // This prevents false positives when switching between presets with same length
+      const prevSorted = [...prevOptionsRef.current].sort();
+      const newSorted = [...options].sort();
+      const isReorder = prevSorted.length === newSorted.length &&
+                        prevSorted.every((opt, idx) => opt === newSorted[idx]);
       
       // Only proceed if it's a true reorder, not a complete replacement
       if (isReorder) {
-        // Additional safety: only sync if options changed recently (within 500ms)
+        // Additional safety: only sync if options changed recently (within 300ms)
         // This prevents stale state from causing incorrect rotations
         const timeSinceChange = Date.now() - optionsChangeTimestampRef.current;
-        if (timeSinceChange > 500) {
+        if (timeSinceChange > 300) {
           // Options changed too long ago, might be stale, skip sync
           prevOptionsRef.current = options;
           prevRotationRef.current = rotation;

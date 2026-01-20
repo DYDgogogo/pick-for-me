@@ -947,7 +947,7 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                       paddingTop: '4px',
                       paddingBottom: '4px',
                       paddingLeft: '10px',
-                      paddingRight: '50px', // Extra padding for last item to ensure it's fully clickable (increased from 20px)
+                      paddingRight: '20px', // Padding for last item to ensure it's fully clickable
                       position: 'relative', // Ensure proper stacking context
                     }}
                   >
@@ -1036,8 +1036,6 @@ export default function OptionEditor({ options, onChange, presets, canUndo = fal
                         </motion.button>
                       );
                     })}
-                    {/* Extra spacer to ensure last button is fully accessible */}
-                    <div style={{ minWidth: '30px', flexShrink: 0 }} />
                   </div>
 
                   {/* Left fade (30px) */}
